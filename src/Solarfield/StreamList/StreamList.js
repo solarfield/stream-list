@@ -75,6 +75,7 @@ define(
 				window.addEventListener('scroll', this._ssl_handleUnthrottledReflow);
 				window.addEventListener('resize', this._ssl_handleUnthrottledReflow);
 				this._ssl_loadDataChunk(aContext, 0);
+				this._ssl_loadRetryIndex = 0;
 			},
 			
 			/**
