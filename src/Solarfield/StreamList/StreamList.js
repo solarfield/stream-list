@@ -151,7 +151,9 @@ define(
 							this._ssl_loadRetryIndex++;
 							
 							//load the data chunk again after a delay
-							setTimeout(this._ssl_loadDataChunk, this._ssl_loadRetryDelay, aContext, aOffset);
+							this._ssl_loadDataChunkTimeout = setTimeout(
+								this._ssl_loadDataChunk, this._ssl_loadRetryDelay, aContext, aOffset)
+							;
 						}
 						
 						else {
