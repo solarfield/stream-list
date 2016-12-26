@@ -45,6 +45,7 @@ define(
 				this._ssl_loadRetryIndex = 0;
 				this._ssl_loadRetryCount = null;
 				this._ssl_loadDataChunkTimeout = 0;
+				this._ssl_loadDataChunkOnFailure = null;
 				this._ssl_hasMoreData = false;
 				this._ssl_viewChunkSize = null;
 				this._ssl_preloadThreshold = null;
@@ -68,14 +69,18 @@ define(
 			 * @param {*=} aContext - Generic info which can be used to provide context to the load process.
 			 *  e.g. a URL query string, search filters, etc.
 			 *  The type/content of this object is defined by the associated StreamListAdapter.
+			 * @returns {Promise.<*, Error>} Promise which resolves to the first successfully loaded data chunk.
 			 * @public
 			 * @see StreamListAdapter#loadItems
 			 */
 			load: function (aContext) {
-				window.addEventListener('scroll', this._ssl_handleUnthrottledReflow);
-				window.addEventListener('resize', this._ssl_handleUnthrottledReflow);
-				this._ssl_loadDataChunk(aContext, 0);
-				this._ssl_loadRetryIndex = 0;
+				return new Promise(function (resolve, reject) {
+					this.abort();
+					window.addEventListener('scroll', this._ssl_handleUnthrottledReflow);
+					window.addEventListener('resize', this._ssl_handleUnthrottledReflow);
+					this._ssl_loadRetryIndex = 0;
+					this._ssl_loadDataChunk(aContext, 0, resolve, reject);
+				}.bind(this));
 			},
 			
 			/**
@@ -92,23 +97,31 @@ define(
 					
 					this._ssl_loadPromise = null;
 				}
+				
+				if (this._ssl_loadDataChunkOnFailure) {
+					this._ssl_loadDataChunkOnFailure(new Error("StreamList load aborted."));
+					this._ssl_loadDataChunkOnFailure = null;
+				}
 			},
 			
 			/**
 			 * Loads a chunk of item results via the adapter, starting from aOffset.
 			 * @param {*} aContext - @see StreamList#load
 			 * @param {int} aOffset - The starting offset.
+			 * @param {function=} aOnSuccess
+			 * @param {function=} aOnFailure
 			 * @private
 			 */
-			_ssl_loadDataChunk: function (aContext, aOffset) {
-				this.abort();
+			_ssl_loadDataChunk: function (aContext, aOffset, aOnSuccess, aOnFailure) {
+				//keep a reference to any failure handler, which will get called if all retries fail
+				this._ssl_loadDataChunkOnFailure = aOnFailure;
 				
 				//whether we are replacing all existing data or not
 				let replace = aOffset == 0;
 				
 				if (this._ssl_hasMoreData || replace) {
 					//load items via the adapter, storing the promise for use as a 'currently executing' flag
-					this._ssl_loadPromise = new Promise(function (resolve) {
+					let loadPromise = new Promise(function (resolve) {
 						resolve(this._ssl_adapter.loadItems(aContext, aOffset));
 						
 						if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
@@ -116,34 +129,46 @@ define(
 						}
 					}.bind(this));
 					
-					this._ssl_loadPromise
+					this._ssl_loadPromise = loadPromise;
+					
+					loadPromise
 					.then(function (r) {
-						if (!(r && ('items' in r))) throw new Error(
-							"Invalid load result. Key 'items' must be of type Array.", {
-								response: r,
+						//if the the promises don't match, it indicates that the load was aborted.
+						//We just ignore the result here, as it will get handled by abort() itself
+						if (this._ssl_loadPromise === loadPromise) {
+							if (!(r && ('items' in r))) throw new Error(
+								"Invalid load result. Key 'items' must be of type Array.", {
+									response: r,
+								}
+							);
+							
+							this._ssl_hasMoreData = this._ssl_bindDataChunk(r.items, replace);
+							
+							if (!this._ssl_hasMoreData) {
+								if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
+									this._ssl_logger.info("Reached end of data.");
+								}
 							}
-						);
-						
-						this._ssl_hasMoreData = this._ssl_bindDataChunk(r.items, replace);
-						
-						if (!this._ssl_hasMoreData) {
-							if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
-								this._ssl_logger.info("Reached end of data.");
+							
+							if (replace) {
+								this._ssl_loadInfo = aContext;
+							}
+							
+							this._ssl_loadPromise = null;
+							this._ssl_loadRetryIndex = 0;
+							this._ssl_loadDataChunkOnFailure = null;
+							
+							//sync the view to check if we should show any new items
+							this._ssl_syncView();
+							
+							if (aOnSuccess) {
+								aOnSuccess(r);
 							}
 						}
-						
-						if (replace) {
-							this._ssl_loadInfo = aContext;
-						}
-						
-						this._ssl_loadPromise = null;
-						this._ssl_loadRetryIndex = 0;
-						
-						//sync the view to check if we should show any new items
-						this._ssl_syncView();
 					}.bind(this))
 					.catch(function (e) {
 						this._ssl_loadPromise = null;
+						this._ssl_loadDataChunkOnFailure = null;
 						let msg = "Loading data failed.";
 						
 						//if we should retry
@@ -153,12 +178,16 @@ define(
 							
 							//load the data chunk again after a delay
 							this._ssl_loadDataChunkTimeout = setTimeout(
-								this._ssl_loadDataChunk, this._ssl_loadRetryDelay, aContext, aOffset)
+								this._ssl_loadDataChunk, this._ssl_loadRetryDelay, aContext, aOffset, aOnSuccess, aOnFailure)
 							;
 						}
 						
 						else {
 							msg += " Will not retry.";
+							
+							if (aOnFailure) {
+								aOnFailure(e);
+							}
 						}
 						
 						if (this._ssl_logLevel >= LOG_LEVEL_ERROR) {
