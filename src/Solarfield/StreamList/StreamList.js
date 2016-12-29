@@ -3,8 +3,9 @@ define(
 	[
 		'solarfield/ok-kit-js/src/Solarfield/Ok/ObjectUtils',
 		'solarfield/ok-kit-js/src/Solarfield/Ok/DomUtils',
+		'solarfield/stream-list/src/Solarfield/StreamList/StreamListLoadError',
 	],
-	function (ObjectUtils, DomUtils) {
+	function (ObjectUtils, DomUtils, StreamListLoadError) {
 		"use strict";
 		
 		const LOG_LEVEL_ERROR = 3;
@@ -99,7 +100,11 @@ define(
 				}
 				
 				if (this._ssl_loadDataChunkOnFailure) {
-					this._ssl_loadDataChunkOnFailure(new Error("StreamList load aborted."));
+					this._ssl_loadDataChunkOnFailure(new StreamListLoadError(
+						"StreamList load aborted.",
+						0, null, null, true
+					));
+					
 					this._ssl_loadDataChunkOnFailure = null;
 				}
 			},
@@ -136,10 +141,9 @@ define(
 						//if the the promises don't match, it indicates that the load was aborted.
 						//We just ignore the result here, as it will get handled by abort() itself
 						if (this._ssl_loadPromise === loadPromise) {
-							if (!(r && ('items' in r))) throw new Error(
-								"Invalid load result. Key 'items' must be of type Array.", {
-									response: r,
-								}
+							if (!(r && ('items' in r))) throw new StreamListLoadError(
+								"Invalid load result. Key 'items' must be of type Array.",
+								0, null, r, false
 							);
 							
 							this._ssl_hasMoreData = this._ssl_bindDataChunk(r.items, replace);
