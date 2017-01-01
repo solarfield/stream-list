@@ -4,8 +4,9 @@ define(
 		'solarfield/ok-kit-js/src/Solarfield/Ok/ObjectUtils',
 		'solarfield/ok-kit-js/src/Solarfield/Ok/DomUtils',
 		'solarfield/stream-list/src/Solarfield/StreamList/StreamListLoadError',
+		'solarfield/stream-list/src/Solarfield/StreamList/StreamListAdapter',
 	],
-	function (ObjectUtils, DomUtils, StreamListLoadError) {
+	function (ObjectUtils, DomUtils, StreamListLoadError, StreamListAdapter) {
 		"use strict";
 		
 		const LOG_LEVEL_ERROR = 3;
@@ -34,8 +35,16 @@ define(
 				this._ssl_handleReflow = this._ssl_handleReflow.bind(this);
 				this._ssl_handleUnthrottledReflow = this._ssl_handleUnthrottledReflow.bind(this);
 				
+				if (!(aOptions.container instanceof HTMLElement)) throw new Error(
+					"The container option must be of type HTMLElement."
+				);
 				this._ssl_container = aOptions.container;
+				
+				if (!(aOptions.adapter instanceof StreamListAdapter)) throw new Error(
+					"The adapter option must be of type StreamListAdapter."
+				);
 				this._ssl_adapter = aOptions.adapter;
+				
 				this._ssl_itemsList = [];
 				this._ssl_itemsListIndex = 0;
 				this._ssl_itemsMap = new Map();
