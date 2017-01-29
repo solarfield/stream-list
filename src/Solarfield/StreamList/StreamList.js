@@ -151,18 +151,18 @@ define(
 				let replace = aOffset == 0;
 				
 				if (this._ssl_hasMoreData || replace) {
+					let loadPromise;
+					
 					//load items via the adapter, storing the promise for use as a 'currently executing' flag
-					let loadPromise = new Promise(function (resolve) {
-						resolve(this._ssl_adapter.loadItems(aContext, aOffset));
+					new Promise(function (resolve) {
+						loadPromise = this._ssl_adapter.loadItems(aContext, aOffset);
+						this._ssl_loadPromise = loadPromise;
+						resolve(loadPromise);
 						
 						if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
 							this._ssl_logger.info("Loading data from offset " + aOffset + ".");
 						}
-					}.bind(this));
-					
-					this._ssl_loadPromise = loadPromise;
-					
-					loadPromise
+					}.bind(this))
 					.then(function (r) {
 						//if the the promises don't match, it indicates that the load was aborted.
 						//We just ignore the result here, as it will get handled by abort() itself
