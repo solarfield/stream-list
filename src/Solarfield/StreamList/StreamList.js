@@ -330,8 +330,11 @@ define(
 					}
 				}
 				
+				let viewportScrollY = window.scrollY;
+				if (viewportScrollY == undefined) viewportScrollY = document.documentElement.scrollTop; //ie11
+				
 				let distance =
-					(window.scrollY + window.innerHeight)
+					(viewportScrollY + window.innerHeight)
 					- (DomUtils.offsetTop(this._ssl_container) + this._ssl_container.offsetHeight);
 				
 				if (distance >= (this._ssl_displayThreshold * -1)) {
