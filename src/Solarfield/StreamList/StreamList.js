@@ -228,7 +228,8 @@ define(
 				//holds the items we accepted during this call (i.e. excludes duplicates)
 				const chunkItemsList = [];
 
-				for (let result of aResults) {
+				for (let i = 0, len = aResults.length; i < len; i++) {
+					let result = aResults[i];
 					let itemKey = this._ssl_adapter.getItemKey(result);
 
 					//discard duplicates in the passed result list
@@ -265,7 +266,9 @@ define(
 					this._ssl_itemsListIndex = 0;
 				}
 
-				for (let item of chunkItemsList) {
+				for (let i = 0, len = chunkItemsList.length; i < len; i++) {
+					let item = chunkItemsList[i];
+					
 					this._ssl_itemsList.push(item);
 					this._ssl_itemsMap.set(item.key, item);
 				}
