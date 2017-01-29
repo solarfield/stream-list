@@ -30,7 +30,7 @@ define(
 			 * @param {int=} aOptions.logLevel - @see https://tools.ietf.org/html/rfc5424#page-11
 			 */
 			constructor: function (aOptions) {
-				this._ssl_loadDataChunk = this._ssl_loadDataChunk.bind(this);
+				this._ssl_handleLoadDataChunkTimeout = this._ssl_handleLoadDataChunkTimeout.bind(this);
 				this._ssl_handleSyncViewTimeout = this._ssl_handleSyncViewTimeout.bind(this);
 				this._ssl_handleReflow = this._ssl_handleReflow.bind(this);
 				this._ssl_handleUnthrottledReflow = this._ssl_handleUnthrottledReflow.bind(this);
@@ -89,7 +89,7 @@ define(
 					window.addEventListener('scroll', this._ssl_handleUnthrottledReflow);
 					window.addEventListener('resize', this._ssl_handleUnthrottledReflow);
 					this._ssl_loadRetryIndex = 0;
-					this._ssl_loadDataChunk(aContext, 0, resolve, reject);
+					this._ssl_loadDataChunk(aContext, 0, resolve, reject, 0);
 				}.bind(this));
 			},
 			
@@ -124,9 +124,26 @@ define(
 			 * @param {int} aOffset - The starting offset.
 			 * @param {function=} aOnSuccess
 			 * @param {function=} aOnFailure
+			 * @param {int} aDelay
 			 * @private
 			 */
-			_ssl_loadDataChunk: function (aContext, aOffset, aOnSuccess, aOnFailure) {
+			_ssl_loadDataChunk: function (aContext, aOffset, aOnSuccess, aOnFailure, aDelay) {
+				clearTimeout(this._ssl_loadDataChunkTimeout);
+				
+				this._ssl_loadDataChunkTimeout = setTimeout(
+					this._ssl_handleLoadDataChunkTimeout, aDelay,
+					aContext, aOffset, aOnSuccess, aOnFailure
+				);
+			},
+			
+			/**
+			 * @param aContext
+			 * @param aOffset
+			 * @param aOnSuccess
+			 * @param aOnFailure
+			 * @private
+			 */
+			_ssl_handleLoadDataChunkTimeout: function (aContext, aOffset, aOnSuccess, aOnFailure) {
 				//keep a reference to any failure handler, which will get called if all retries fail
 				this._ssl_loadDataChunkOnFailure = aOnFailure;
 				
@@ -190,9 +207,7 @@ define(
 							this._ssl_loadRetryIndex++;
 							
 							//load the data chunk again after a delay
-							this._ssl_loadDataChunkTimeout = setTimeout(
-								this._ssl_loadDataChunk, this._ssl_loadRetryDelay, aContext, aOffset, aOnSuccess, aOnFailure)
-							;
+							this._ssl_loadDataChunk(aContext, aOffset, aOnSuccess, aOnFailure, this._ssl_loadRetryDelay);
 						}
 						
 						else {
@@ -354,7 +369,7 @@ define(
 					if (this._ssl_hasMoreData) {
 						if (!this._ssl_loadPromise) {
 							if (itemsLeftCount < this._ssl_preloadThreshold) {
-								this._ssl_loadDataChunk(this._ssl_loadInfo, this._ssl_itemsList.length);
+								this._ssl_loadDataChunk(this._ssl_loadInfo, this._ssl_itemsList.length, null, null, 0);
 							}
 						}
 					}
