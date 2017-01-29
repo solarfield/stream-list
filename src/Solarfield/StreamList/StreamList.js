@@ -377,11 +377,11 @@ define(
 			 * @public
 			 */
 			preloadThreshold: {
-				get() {
+				get: function () {
 					return this._ssl_preloadThreshold;
 				},
 				
-				set (v) {
+				set: function (v) {
 					let vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
@@ -397,11 +397,11 @@ define(
 			 * @public
 			 */
 			loadRetryCount: {
-				get() {
+				get: function () {
 					return this._ssl_loadRetryCount;
 				},
 				
-				set (v) {
+				set: function (v) {
 					let vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
@@ -417,11 +417,11 @@ define(
 			 * @public
 			 */
 			loadRetryDelay: {
-				get() {
+				get: function () {
 					return this._ssl_loadRetryDelay;
 				},
 				
-				set (v) {
+				set: function (v) {
 					let vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
@@ -437,11 +437,11 @@ define(
 			 * @public
 			 */
 			displayThreshold: {
-				get() {
+				get: function () {
 					return this._ssl_displayThreshold;
 				},
 				
-				set (v) {
+				set: function (v) {
 					let vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
@@ -457,11 +457,11 @@ define(
 			 * @public
 			 */
 			viewChunkSize: {
-				get() {
+				get: function () {
 					return this._ssl_viewChunkSize;
 				},
 				
-				set (v) {
+				set: function (v) {
 					let vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v > 0)) throw new Error(
@@ -477,11 +477,11 @@ define(
 			 * @public
 			 */
 			logLevel: {
-				get() {
+				get: function () {
 					return this._ssl_logLevel;
 				},
 				
-				set (v) {
+				set: function (v) {
 					let vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
@@ -497,11 +497,11 @@ define(
 			 * @public
 			 */
 			logger: {
-				get() {
+				get: function () {
 					return this._ssl_logger;
 				},
 				
-				set (v) {
+				set: function (v) {
 					if (!(v && ('info' in v) && ('error' in v) && ('warn' in v) && ('debug' in v))) throw new Error(
 						"Logger object must implement methods error(), warn(), info(), debug()."
 					);
