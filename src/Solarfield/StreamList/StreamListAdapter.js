@@ -1,5 +1,4 @@
 define(
-	'solarfield/stream-list/src/Solarfield/StreamList/StreamListAdapter',
 	[
 		'solarfield/ok-kit-js/src/Solarfield/Ok/ObjectUtils',
 	],

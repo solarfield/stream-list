@@ -1,5 +1,4 @@
 define(
-	'solarfield/ok-kit-js/src/Solarfield/Ok/StreamListLoadError',
 	[
 		'solarfield/ok-kit-js/src/Solarfield/Ok/ObjectUtils',
 		'solarfield/ok-kit-js/src/Solarfield/Ok/CustomError'
