@@ -8,13 +8,13 @@ define(
 	function (ObjectUtils, DomUtils, StreamListLoadError, StreamListAdapter) {
 		"use strict";
 		
-		const LOG_LEVEL_ERROR = 3;
-		const LOG_LEVEL_NOTICE = 5;
+		var LOG_LEVEL_ERROR = 3;
+		var LOG_LEVEL_NOTICE = 5;
 		
 		/**
 		 * @class StreamList
 		 */
-		let StreamList = ObjectUtils.extend(Object, {
+		var StreamList = ObjectUtils.extend(Object, {
 			/**
 			 * @constructor
 			 * @param {Object} aOptions
@@ -144,15 +144,15 @@ define(
 			 * @private
 			 */
 			_ssl_handleLoadDataChunkTimeout: function (aContext, aOffset, aOnSuccess, aOnFailure) {
+				var loadPromise;
+				
 				//keep a reference to any failure handler, which will get called if all retries fail
 				this._ssl_loadDataChunkOnFailure = aOnFailure;
 				
 				//whether we are replacing all existing data or not
-				let replace = aOffset == 0;
+				var replace = aOffset == 0;
 				
 				if (this._ssl_hasMoreData || replace) {
-					let loadPromise;
-					
 					//load items via the adapter, storing the promise for use as a 'currently executing' flag
 					new Promise(function (resolve) {
 						loadPromise = this._ssl_adapter.loadItems(aContext, aOffset);
@@ -199,7 +199,7 @@ define(
 					.catch(function (e) {
 						this._ssl_loadPromise = null;
 						this._ssl_loadDataChunkOnFailure = null;
-						let msg = "Loading data failed.";
+						var msg = "Loading data failed.";
 						
 						//if we should retry
 						if (this._ssl_loadRetryIndex < this._ssl_loadRetryCount) {
@@ -235,22 +235,23 @@ define(
 			 * @private
 			 */
 			_ssl_bindDataChunk: function (aResults, aReplace) {
-				const replace = aReplace != null ? aReplace : true;
+				var replace = aReplace != null ? aReplace : true;
 				
 				//holds the keys of all items we encountered during this call
-				const chunkItemsSet = new Set();
+				var chunkItemsSet = new Set();
 				
 				//holds the items we accepted during this call (i.e. excludes duplicates)
-				const chunkItemsList = [];
+				var chunkItemsList = [];
+				var i, len, result, itemKey, item, added, discarded, msg;
 
-				for (let i = 0, len = aResults.length; i < len; i++) {
-					let result = aResults[i];
-					let itemKey = this._ssl_adapter.getItemKey(result);
+				for (i = 0, len = aResults.length; i < len; i++) {
+					result = aResults[i];
+					itemKey = this._ssl_adapter.getItemKey(result);
 
 					//discard duplicates in the passed result list
 					if (!chunkItemsSet.has(itemKey)) {
 						//check if we already have the item
-						let item = this._ssl_itemsMap.get(itemKey);
+						item = this._ssl_itemsMap.get(itemKey);
 
 						//if we already have the item
 						if (item) {
@@ -281,18 +282,18 @@ define(
 					this._ssl_itemsListIndex = 0;
 				}
 
-				for (let i = 0, len = chunkItemsList.length; i < len; i++) {
-					let item = chunkItemsList[i];
+				for (i = 0, len = chunkItemsList.length; i < len; i++) {
+					item = chunkItemsList[i];
 					
 					this._ssl_itemsList.push(item);
 					this._ssl_itemsMap.set(item.key, item);
 				}
 				
 				if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
-					let added = chunkItemsList.length;
-					let discarded = chunkItemsSet.size - added;
+					added = chunkItemsList.length;
+					discarded = chunkItemsSet.size - added;
 					
-					let msg = "Added " + added + " items.";
+					msg = "Added " + added + " items.";
 					if (discarded > 0) msg += " Discarded " + discarded + " duplicates.";
 					
 					this._ssl_logger.info(msg);
@@ -307,15 +308,16 @@ define(
 			 * @private
 			 */
 			_ssl_bindViewChunk: function () {
-				let chunk = document.createDocumentFragment();
-				let chunkActualSize = 0;
+				var chunk = document.createDocumentFragment();
+				var chunkActualSize = 0;
+				var i, item;
 
 				for (
-					let i = 0;
+					i = 0;
 					i < this._ssl_viewChunkSize && this._ssl_itemsListIndex < this._ssl_itemsList.length;
 					i++, this._ssl_itemsListIndex++
 				) {
-					let item = this._ssl_itemsList[this._ssl_itemsListIndex];
+					item = this._ssl_itemsList[this._ssl_itemsListIndex];
 
 					//if the item hasn't been rendered yet (i.e. created the <li> element)
 					if (!item.element) {
@@ -339,21 +341,23 @@ define(
 			},
 			
 			_ssl_handleSyncViewTimeout: function () {
+				var itemsLeftCount;
+				
 				if (this._ssl_itemsListIndex == 0) {
 					while (this._ssl_container.hasChildNodes()) {
 						this._ssl_container.lastChild.remove();
 					}
 				}
 				
-				let viewportScrollY = window.scrollY;
+				var viewportScrollY = window.scrollY;
 				if (viewportScrollY == undefined) viewportScrollY = document.documentElement.scrollTop; //ie11
 				
-				let distance =
+				var distance =
 					(viewportScrollY + window.innerHeight)
 					- (DomUtils.offsetTop(this._ssl_container) + this._ssl_container.offsetHeight);
 				
 				if (distance >= (this._ssl_displayThreshold * -1)) {
-					let itemsLeftCount = this._ssl_bindViewChunk();
+					itemsLeftCount = this._ssl_bindViewChunk();
 					
 					if (itemsLeftCount > 0) {
 						this._ssl_syncView();
@@ -400,7 +404,7 @@ define(
 				},
 				
 				set: function (v) {
-					let vv = parseInt(v);
+					var vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
 						"Invalid preloadThreshold '" + v + "'."
@@ -420,7 +424,7 @@ define(
 				},
 				
 				set: function (v) {
-					let vv = parseInt(v);
+					var vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
 						"Invalid loadRetryCount '" + v + "'."
@@ -440,7 +444,7 @@ define(
 				},
 				
 				set: function (v) {
-					let vv = parseInt(v);
+					var vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
 						"Invalid loadRetryDelay '" + v + "'."
@@ -460,7 +464,7 @@ define(
 				},
 				
 				set: function (v) {
-					let vv = parseInt(v);
+					var vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
 						"Invalid displayThreshold '" + v + "'."
@@ -480,7 +484,7 @@ define(
 				},
 				
 				set: function (v) {
-					let vv = parseInt(v);
+					var vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v > 0)) throw new Error(
 						"Invalid viewChunkSize '" + v + "'."
@@ -500,7 +504,7 @@ define(
 				},
 				
 				set: function (v) {
-					let vv = parseInt(v);
+					var vv = parseInt(v);
 					
 					if (!(!isNaN(vv) && v >= 0)) throw new Error(
 						"Invalid logLevel '" + v + "'."

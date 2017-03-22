@@ -8,7 +8,7 @@ define(
 		/**
 		 * @class StreamListAdapter
 		 */
-		let StreamListAdapter = ObjectUtils.extend(Object, {
+		var StreamListAdapter = ObjectUtils.extend(Object, {
 			/**
 			 * Loads items data starting at the specified offset and resolves to a StreamListLoadResult.
 			 * @param {*} aContext - Generic info which will be passed from StreamList#load().

@@ -13,7 +13,7 @@ define(
 		 * @class StreamListLoadError
 		 * @extends CustomError
 		 */
-		let StreamListLoadError = ObjectUtils.extend(CustomError, {
+		var StreamListLoadError = ObjectUtils.extend(CustomError, {
 			/**
 			 * @param {string} aMessage
 			 * @param {int=0} aCode
