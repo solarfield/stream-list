@@ -19,5 +19,8 @@ Dynamically populates a list of HTML elements.
 - Promise based API
 - AMD module
 
-# Compatibility
-- Any modern browser or IE11+
+# Browser Compatibility
+- Firefox, Chrome, Edge
+- Internet Explorer 11
+- Safari 9+
+- Samsung Internet 4+
