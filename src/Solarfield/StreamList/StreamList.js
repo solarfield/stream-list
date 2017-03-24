@@ -48,6 +48,7 @@ define(
 				this._ssl_itemsListIndex = 0;
 				this._ssl_itemsMap = new Map();
 				this._ssl_syncViewTimeout = null;
+				this._ssl_syncingAll = false;
 				this._ssl_loadPromise = null;
 				this._ssl_loadInfo = null;
 				this._ssl_loadRetryDelay = null;
@@ -86,6 +87,7 @@ define(
 				return new Promise(function (resolve, reject) {
 					this.abort();
 					this._ssl_hasMoreData = true;
+					this._ssl_syncingAll = false;
 					this._ssl_loadRetryIndex = 0;
 					window.addEventListener('scroll', this._ssl_handleUnthrottledReflow);
 					window.addEventListener('resize', this._ssl_handleUnthrottledReflow);
@@ -116,6 +118,15 @@ define(
 					
 					this._ssl_loadDataChunkOnFailure = null;
 				}
+			},
+			
+			/**
+			 * Renders all remaining items to the list.
+			 * @public
+			 */
+			renderAll: function () {
+				this._ssl_syncingAll = true;
+				this._ssl_syncView();
 			},
 			
 			/**
@@ -341,7 +352,7 @@ define(
 			},
 			
 			_ssl_handleSyncViewTimeout: function () {
-				var itemsLeftCount;
+				var itemsLeftCount, doStep, distance, viewportScrollY;
 				
 				if (this._ssl_itemsListIndex == 0) {
 					while (this._ssl_container.hasChildNodes()) {
@@ -349,14 +360,21 @@ define(
 					}
 				}
 				
-				var viewportScrollY = window.scrollY;
-				if (viewportScrollY == undefined) viewportScrollY = document.documentElement.scrollTop; //ie11
+				if (this._ssl_syncingAll) {
+					doStep = true;
+				}
+				else {
+					viewportScrollY = window.scrollY;
+					if (viewportScrollY == undefined) viewportScrollY = document.documentElement.scrollTop; //ie11
+					
+					distance =
+						(viewportScrollY + window.innerHeight)
+						- (DomUtils.offsetTop(this._ssl_container) + this._ssl_container.offsetHeight);
+					
+					doStep = distance >= (this._ssl_displayThreshold * -1);
+				}
 				
-				var distance =
-					(viewportScrollY + window.innerHeight)
-					- (DomUtils.offsetTop(this._ssl_container) + this._ssl_container.offsetHeight);
-				
-				if (distance >= (this._ssl_displayThreshold * -1)) {
+				if (doStep) {
 					itemsLeftCount = this._ssl_bindViewChunk();
 					
 					if (itemsLeftCount > 0) {
