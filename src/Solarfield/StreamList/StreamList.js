@@ -356,7 +356,7 @@ define(
 				
 				if (this._ssl_itemsListIndex == 0) {
 					while (this._ssl_container.hasChildNodes()) {
-						this._ssl_container.lastChild.remove();
+						this._ssl_container.removeChild(this._ssl_container.lastChild);
 					}
 				}
 				
