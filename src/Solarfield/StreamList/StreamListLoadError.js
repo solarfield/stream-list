@@ -7,7 +7,7 @@ define(
 		ObjectUtils, CustomError
 	) {
 		"use strict";
-		
+
 		/**
 		 * Error class which has additional details about the stream list.
 		 * @class StreamListLoadError
@@ -25,14 +25,14 @@ define(
 			 */
 			constructor: function StreamListLoadError(aMessage, aCode, aPrevious, aResult, aAborted) {
 				StreamListLoadError.super.call(this, aMessage, aCode, aPrevious);
-				
+
 				this.streamListDetails = {
 					result: aResult,
 					aborted: aAborted
 				};
 			}
 		});
-		
+
 		return StreamListLoadError;
 	}
 );
@@ -42,4 +42,3 @@ define(
  * @property {StreamListLoadResult} result - Any data returned by StreamListAdapter#loadItems.
  * @property {boolean} aborted - Whether the load was aborted.
  */
- 

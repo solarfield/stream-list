@@ -4,7 +4,7 @@ define(
 	],
 	function (ObjectUtils) {
 		"use strict";
-		
+
 		/**
 		 * @class StreamListAdapter
 		 */
@@ -18,7 +18,7 @@ define(
 			loadItems: function (aContext, aOffset) {
 				throw new Error("Method is abstract.");
 			},
-			
+
 			/**
 			 * Gets the item's unique key.
 			 * This can be any value which uniquely identifies the item.
@@ -28,7 +28,7 @@ define(
 			getItemKey: function (aItem) {
 				throw new Error("Method is abstract.");
 			},
-			
+
 			/**
 			 * Creates an HTML element for the item.
 			 * @param {*} aItem - The item.
@@ -37,20 +37,20 @@ define(
 			renderItem: function (aItem, aContainer) {
 				throw new Error("Method is abstract.");
 			},
-			
+
 			/**
 			 * @param {{}} aOptions
 			 */
 			constructor: function (aOptions) {
-				
+
 			},
 		});
-		
+
 		/**
 		 * @typedef {{}} StreamListLoadResult
 		 * @param {*[]} StreamListLoadResult.items - List of items.
 		 */
-		
+
 		return StreamListAdapter;
 	}
 );
