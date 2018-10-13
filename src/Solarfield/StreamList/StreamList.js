@@ -259,9 +259,9 @@ define(
 					result = aResults[i];
 					itemKey = this._ssl_adapter.getItemKey(result);
 
-					//discard duplicates in the passed result list
+					//if the item is not already in the current chunk (i.e. discard duplicates)
 					if (!chunkItemsSet.has(itemKey)) {
-						//check if we already have the item
+						//check if we already have the item in the overall list
 						item = this._ssl_itemsMap.get(itemKey);
 
 						//if we already have the item
