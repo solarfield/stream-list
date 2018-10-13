@@ -27,6 +27,10 @@ define(
 			 * @param {int=} aOptions.loadRetryDelay - Delay before retrying data load, in milliseconds.
 			 * @param {Object=} aOptions.logger
 			 * @param {int=} aOptions.logLevel - @see https://tools.ietf.org/html/rfc5424#page-11
+			 * @param {bool} [aOptions.reuseResults=false] - Whether to reuse existing results in subsequent searches.
+			 *  When true, the matching item from the previous search will be reused as is, skipping the
+			 *  (re)rendering the new data, etc. If an individual result's content can change based upon
+			 *  search input, or is very time sensitive, set this to false to avoid 'stale' results.
 			 */
 			constructor: function (aOptions) {
 				this._ssl_handleLoadDataChunkTimeout = this._ssl_handleLoadDataChunkTimeout.bind(this);
@@ -69,6 +73,7 @@ define(
 				this.viewChunkSize = aOptions.viewChunkSize != null ? aOptions.viewChunkSize : 4;
 				this.logger = aOptions.logger != null ? aOptions.logger : self.console;
 				this.logLevel = aOptions.logLevel != null ? aOptions.logLevel : 3;
+				this.reuseResults = aOptions.reuseResults != null ? true == aOptions.reuseResults : false;
 
 				this.preloadThreshold = aOptions.preloadThreshold != null
 					? aOptions.preloadThreshold : this._ssl_viewChunkSize * 2;
@@ -259,21 +264,34 @@ define(
 					result = aResults[i];
 					itemKey = this._ssl_adapter.getItemKey(result);
 
-					//if the item is not already in the current chunk (i.e. discard duplicates)
+					//if the item is not already in the current chunk
 					if (!chunkItemsSet.has(itemKey)) {
-						//check if we already have the item in the overall list
+						// get any existing matching item in the overall list
 						item = this._ssl_itemsMap.get(itemKey);
 
-						//if we already have the item
+						//if we already have the item in the overall list
 						if (item) {
-							//add the item if we are replacing, otherwise discard it as a duplicate
+							//if we are replacing results
 							if (replace) {
-								chunkItemsList.push(item);
+								if (this.reuseResults) {
+									// add the existing item
+									chunkItemsList.push(item);
+								}
+								else {
+									// add the new item
+									chunkItemsList.push({
+										result: result,
+										key: itemKey,
+									})
+								}
 							}
+
+							//else we are appending results, discard the item as a duplicate
 						}
 
-						//else we don't have the item yet
+						//else we don't have the item in the overall list yet
 						else {
+							// add the new item
 							chunkItemsList.push({
 								result: result,
 								key: itemKey,
@@ -282,6 +300,8 @@ define(
 
 						chunkItemsSet.add(itemKey);
 					}
+
+					//else the item exists in the current chunk, discard it as a duplicate
 				}
 
 				if (replace) {
