@@ -69,7 +69,7 @@ define(
 				this.viewChunkSize = aOptions.viewChunkSize != null ? aOptions.viewChunkSize : 4;
 				this.logger = aOptions.logger != null ? aOptions.logger : self.console;
 				this.logLevel = aOptions.logLevel != null ? aOptions.logLevel : 3;
-				
+
 				this.preloadThreshold = aOptions.preloadThreshold != null
 					? aOptions.preloadThreshold : this._ssl_viewChunkSize * 2;
 			},
@@ -274,13 +274,10 @@ define(
 
 						//else we don't have the item yet
 						else {
-							item = {
+							chunkItemsList.push({
 								result: result,
 								key: itemKey,
-							};
-
-							chunkItemsList.push(item);
-							this._ssl_itemsMap.set(itemKey, item);
+							});
 						}
 
 						chunkItemsSet.add(itemKey);
