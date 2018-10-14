@@ -20,13 +20,13 @@ define(
 			 * @param {Object} aOptions
 			 * @param {HTMLElement} aOptions.container
 			 * @param {StreamListAdapter} aOptions.adapter
-			 * @param {int=} aOptions.viewChunkSize - Number of items appended to document during each render pass.
-			 * @param {int=} aOptions.displayThreshold - Number of pixels from end of list, that will trigger a render pass.
-			 * @param {int=} aOptions.preloadThreshold - Number of items from end of data, that will trigger a data load.
-			 * @param {int=} aOptions.loadRetryCount - Number of retries if data loading failed.
-			 * @param {int=} aOptions.loadRetryDelay - Delay before retrying data load, in milliseconds.
-			 * @param {Object=} aOptions.logger
-			 * @param {int=} aOptions.logLevel - @see https://tools.ietf.org/html/rfc5424#page-11
+			 * @param {int} [aOptions.viewChunkSize=4] - Number of items appended to document during each render pass.
+			 * @param {int} [aOptions.displayThreshold=200] - Number of pixels from end of list, that will trigger a render pass.
+			 * @param {int} [aOptions.preloadThreshold] - Number of items from end of data, that will trigger a data load.
+			 * @param {int} [aOptions.loadRetryCount=9] - Number of retries if data loading failed.
+			 * @param {int} [aOptions.loadRetryDelay=3000] - Delay before retrying data load, in milliseconds.
+			 * @param {Logger} [aOptions.logger=self.console]
+			 * @param {int} [aOptions.logLevel=3] - @see https://tools.ietf.org/html/rfc5424#page-11
 			 * @param {bool} [aOptions.reuseResults=false] - Whether to reuse existing results in subsequent searches.
 			 *  When true, the matching item from the previous search will be reused as is, skipping the
 			 *  (re)rendering the new data, etc. If an individual result's content can change based upon
@@ -136,6 +136,7 @@ define(
 
 			/**
 			 * Loads a chunk of item results via the adapter, starting from aOffset.
+			 * Calls _ssl_handleLoadDataChunkTimeout().
 			 * @param {*} aContext - @see StreamList#load
 			 * @param {int} aOffset - The starting offset.
 			 * @param {function=} aOnSuccess
@@ -153,6 +154,7 @@ define(
 			},
 
 			/**
+			 * Called by _ssl_loadDataChunk().
 			 * @param aContext
 			 * @param aOffset
 			 * @param aOnSuccess
@@ -363,11 +365,21 @@ define(
 				return this._ssl_itemsList.length - this._ssl_itemsListIndex;
 			},
 
+			/**
+			 * Checks if there are more items that need to be displayed.
+			 * This is called from scroll event handlers, etc.
+			 * Calls _ssl_handleSyncViewTimeout().
+			 * @private
+			 */
 			_ssl_syncView: function () {
 				cancelAnimationFrame(this._ssl_syncViewTimeout);
 				this._ssl_syncViewTimeout = requestAnimationFrame(this._ssl_handleSyncViewTimeout);
 			},
 
+			/**
+			 * Called by _ssl_syncView().
+			 * @private
+			 */
 			_ssl_handleSyncViewTimeout: function () {
 				var itemsLeftCount, doStep, distance, viewportScrollY;
 
@@ -415,13 +427,22 @@ define(
 				}
 			},
 
-			_ssl_handleReflow: function () {
-				this._ssl_syncView();
-			},
-
+			/**
+			 * Event handler for scroll, resize, etc.
+			 * Calls _ssl_handleReflow().
+			 * @private
+			 */
 			_ssl_handleUnthrottledReflow: function () {
 				cancelAnimationFrame(this._ssl_handleUnthrottledReflowTimeout);
 				this._ssl_handleUnthrottledReflowTimeout = requestAnimationFrame(this._ssl_handleReflow);
+			},
+
+			/**
+			 * Called by _ssl_handleUnthrottledReflow().
+			 * @private
+			 */
+			_ssl_handleReflow: function () {
+				this._ssl_syncView();
 			},
 		});
 
