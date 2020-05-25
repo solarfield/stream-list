@@ -4,8 +4,9 @@ define(
 		'solarfield/ok-kit-js/src/Solarfield/Ok/DomUtils',
 		'solarfield/stream-list/src/Solarfield/StreamList/StreamListLoadError',
 		'solarfield/stream-list/src/Solarfield/StreamList/StreamListAdapter',
+		'solarfield/ok-kit-js/src/Solarfield/Ok/EventTarget',
 	],
-	function (ObjectUtils, DomUtils, StreamListLoadError, StreamListAdapter) {
+	function (ObjectUtils, DomUtils, StreamListLoadError, StreamListAdapter, EventTarget) {
 		"use strict";
 
 		var LOG_LEVEL_ERROR = 3;
@@ -48,6 +49,7 @@ define(
 				);
 				this._ssl_adapter = aOptions.adapter;
 
+				this._ssl_eventTarget = new EventTarget();
 				this._ssl_itemsList = [];
 				this._ssl_itemsListIndex = 0;
 				this._ssl_itemsMap = new Map();
@@ -132,6 +134,14 @@ define(
 			renderAll: function () {
 				this._ssl_syncingAll = true;
 				this._ssl_syncView();
+			},
+
+			addEventListener: function (aEventType, aListener, aOptions) {
+				this._ssl_eventTarget.addEventListener(aEventType, aListener, aOptions);
+			},
+
+			removeEventListener: function (aEventType, aListener, aOptions) {
+				this._ssl_eventTarget.removeEventListener(aEventType, aListener, aOptions);
 			},
 
 			/**
@@ -360,6 +370,13 @@ define(
 
 				if (chunkActualSize > 0) {
 					this._ssl_container.appendChild(chunk);
+
+					if (this._ssl_eventTarget.hasEventListeners('render-chunk')) {
+						this._ssl_eventTarget.dispatchEvent(this, {
+							type: 'render-chunk',
+							target: this,
+						});
+					}
 				}
 
 				return this._ssl_itemsList.length - this._ssl_itemsListIndex;
