@@ -5,7 +5,7 @@ export class StreamListAdapter {
 	/**
 	 * Loads items data starting at the specified offset and resolves to a StreamListLoadResult.
 	 * @param {*} context - Generic info which will be passed from StreamList#load().
-	 * @param {number} offset - Item offset to start load from. Integer, zero-based.
+	 * @param {int} offset - Item offset to start load from. Zero-based.
 	 * @return {Promise<StreamListLoadResult, Error>} Loaded items.
 	 */
 	async loadItems(context, offset) {
