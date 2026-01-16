@@ -27,40 +27,15 @@ export class StreamList {
 	 *  search input, or is very time sensitive, set this to false to avoid 'stale' results.
 	 */
 	constructor(aOptions) {
-		this._ssl_handleLoadDataChunkTimeout = this._ssl_handleLoadDataChunkTimeout.bind(this);
-		this._ssl_handleSyncViewTimeout = this._ssl_handleSyncViewTimeout.bind(this);
-		this._ssl_handleReflow = this._ssl_handleReflow.bind(this);
-		this._ssl_handleUnthrottledReflow = this._ssl_handleUnthrottledReflow.bind(this);
-
 		if (!(aOptions.container instanceof HTMLElement)) throw new Error(
 			"The container option must be of type HTMLElement.",
 		);
-		this._ssl_container = aOptions.container;
+		this.#container = aOptions.container;
 
 		if (!(aOptions.adapter instanceof StreamListAdapter)) throw new Error(
 			"The adapter option must be of type StreamListAdapter.",
 		);
-		this._ssl_adapter = aOptions.adapter;
-
-		this._ssl_eventTarget = new EventTarget(['render-chunk']);
-		this._ssl_itemsList = [];
-		this._ssl_itemsListIndex = 0;
-		this._ssl_itemsMap = new Map();
-		this._ssl_syncViewTimeout = null;
-		this._ssl_syncingAll = false;
-		this._ssl_loadPromise = null;
-		this._ssl_loadInfo = null;
-		this._ssl_loadRetryDelay = null;
-		this._ssl_loadRetryIndex = 0;
-		this._ssl_loadRetryCount = null;
-		this._ssl_loadDataChunkTimeout = 0;
-		this._ssl_loadDataChunkOnFailure = null;
-		this._ssl_hasMoreData = false;
-		this._ssl_viewChunkSize = null;
-		this._ssl_preloadThreshold = null;
-		this._ssl_displayThreshold = null;
-		this._ssl_logger = null;
-		this._ssl_logLevel = null;
+		this.#adapter = aOptions.adapter;
 
 		this.displayThreshold = aOptions.displayThreshold != null ? aOptions.displayThreshold : 200;
 		this.loadRetryCount = aOptions.loadRetryCount != null ? aOptions.loadRetryCount : 9;
@@ -71,7 +46,103 @@ export class StreamList {
 		this.reuseResults = aOptions.reuseResults != null ? true == aOptions.reuseResults : false;
 
 		this.preloadThreshold = aOptions.preloadThreshold != null
-			? aOptions.preloadThreshold : this._ssl_viewChunkSize * 2;
+			? aOptions.preloadThreshold : this.#viewChunkSize * 2;
+	}
+
+	get preloadThreshold() {
+		return this.#preloadThreshold;
+	}
+
+	set preloadThreshold(v) {
+		var vv = parseInt(v);
+
+		if (!(!isNaN(vv) && v >= 0)) throw new Error(
+			"Invalid preloadThreshold '" + v + "'.",
+		);
+
+		this.#preloadThreshold = vv;
+	}
+
+	get loadRetryCount() {
+		return this.#loadRetryCount;
+	}
+
+	set loadRetryCount(v) {
+		var vv = parseInt(v);
+
+		if (!(!isNaN(vv) && v >= 0)) throw new Error(
+			"Invalid loadRetryCount '" + v + "'.",
+		);
+
+		this.#loadRetryCount = vv;
+	}
+
+	get loadRetryDelay() {
+		return this.#loadRetryDelay;
+	}
+
+	set loadRetryDelay(v) {
+		var vv = parseInt(v);
+
+		if (!(!isNaN(vv) && v >= 0)) throw new Error(
+			"Invalid loadRetryDelay '" + v + "'.",
+		);
+
+		this.#loadRetryDelay = vv;
+	}
+
+	get displayThreshold() {
+		return this.#displayThreshold;
+	}
+
+	set displayThreshold(v) {
+		var vv = parseInt(v);
+
+		if (!(!isNaN(vv) && v >= 0)) throw new Error(
+			"Invalid displayThreshold '" + v + "'.",
+		);
+
+		this.#displayThreshold = vv;
+	}
+
+	get viewChunkSize() {
+		return this.#viewChunkSize;
+	}
+
+	set viewChunkSize(v) {
+		var vv = parseInt(v);
+
+		if (!(!isNaN(vv) && v > 0)) throw new Error(
+			"Invalid viewChunkSize '" + v + "'.",
+		);
+
+		this.#viewChunkSize = vv;
+	}
+
+	get logLevel() {
+		return this.#logLevel;
+	}
+
+	set logLevel(v) {
+		var vv = parseInt(v);
+
+		if (!(!isNaN(vv) && v >= 0)) throw new Error(
+			"Invalid logLevel '" + v + "'.",
+		);
+
+		this.#logLevel = vv;
+	}
+
+	get logger() {
+		return this.#logger;
+	}
+
+	set logger(v) {
+		if (!(v && ('info' in v) && ('error' in v) && ('warn' in v) && ('debug' in v))) throw new Error(
+			"Logger object must implement methods error(), warn(), info(), debug().",
+		);
+
+		this.#logger = v;
 	}
 
 	/**
@@ -86,12 +157,12 @@ export class StreamList {
 	load(aContext) {
 		return new Promise(function (resolve, reject) {
 			this.abort();
-			this._ssl_hasMoreData = true;
-			this._ssl_syncingAll = false;
-			this._ssl_loadRetryIndex = 0;
-			window.addEventListener('scroll', this._ssl_handleUnthrottledReflow);
-			window.addEventListener('resize', this._ssl_handleUnthrottledReflow);
-			this._ssl_loadDataChunk(aContext, 0, resolve, reject, 0);
+			this.#hasMoreData = true;
+			this.#syncingAll = false;
+			this.#loadRetryIndex = 0;
+			window.addEventListener('scroll', this.#handleUnthrottledReflow);
+			window.addEventListener('resize', this.#handleUnthrottledReflow);
+			this.#loadDataChunk(aContext, 0, resolve, reject, 0);
 		}.bind(this));
 	}
 
@@ -100,23 +171,23 @@ export class StreamList {
 	 * @public
 	 */
 	abort() {
-		clearTimeout(this._ssl_loadDataChunkTimeout);
+		clearTimeout(this.#loadDataChunkTimeout);
 
-		if (this._ssl_loadPromise) {
-			if ('abort' in this._ssl_loadPromise) {
-				this._ssl_loadPromise.abort();
+		if (this.#loadPromise) {
+			if ('abort' in this.#loadPromise) {
+				this.#loadPromise.abort();
 			}
 
-			this._ssl_loadPromise = null;
+			this.#loadPromise = null;
 		}
 
-		if (this._ssl_loadDataChunkOnFailure) {
-			this._ssl_loadDataChunkOnFailure(new StreamListLoadError(
+		if (this.#loadDataChunkOnFailure) {
+			this.#loadDataChunkOnFailure(new StreamListLoadError(
 				"StreamList load aborted.",
 				0, null, null, true,
 			));
 
-			this._ssl_loadDataChunkOnFailure = null;
+			this.#loadDataChunkOnFailure = null;
 		}
 	}
 
@@ -125,21 +196,43 @@ export class StreamList {
 	 * @public
 	 */
 	renderAll() {
-		this._ssl_syncingAll = true;
-		this._ssl_syncView();
+		this.#syncingAll = true;
+		this.#syncView();
 	}
 
 	addEventListener(aEventType, aListener, aOptions) {
-		this._ssl_eventTarget.addEventListener(aEventType, aListener, aOptions);
+		this.#eventTarget.addEventListener(aEventType, aListener, aOptions);
 	}
 
 	removeEventListener(aEventType, aListener, aOptions) {
-		this._ssl_eventTarget.removeEventListener(aEventType, aListener, aOptions);
+		this.#eventTarget.removeEventListener(aEventType, aListener, aOptions);
 	}
+
+	/** @type {HTMLElement} */ #container;
+	/** @type {StreamListAdapter} */ #adapter;
+	/** @type {EventTarget} */ #eventTarget = new EventTarget(['render-chunk']);
+	/** @type {*[]} */ #itemsList = [];
+	/** @type {int} */ #itemsListIndex = 0;
+	/** @type {Map<*,*>} */ #itemsMap = new Map();
+	/** @type {*} */ #syncViewTimeout = null;
+	/** @type {boolean} */ #syncingAll = false;
+	/** @type {?Promise} */ #loadPromise = null;
+	/** @type {*} */ #loadInfo = null;
+	/** @type {int} */ #loadRetryDelay;
+	/** @type {int} */ #loadRetryIndex = 0;
+	/** @type {int} */ #loadRetryCount;
+	/** @type {*} */ #loadDataChunkTimeout = 0;
+	/** @type {?function} */ #loadDataChunkOnFailure = null;
+	/** @type {boolean} */ #hasMoreData = false;
+	/** @type {int} */ #viewChunkSize;
+	/** @type {int} */ #preloadThreshold;
+	/** @type {int} */ #displayThreshold;
+	/** @type {*} */ #logger = null;
+	/** @type {int} */ #logLevel;
 
 	/**
 	 * Loads a chunk of item results via the adapter, starting from aOffset.
-	 * Calls _ssl_handleLoadDataChunkTimeout().
+	 * Calls #handleLoadDataChunkTimeout().
 	 * @param {*} aContext - @see StreamList#load
 	 * @param {int} aOffset - The starting offset.
 	 * @param {function=} aOnSuccess
@@ -147,70 +240,70 @@ export class StreamList {
 	 * @param {int} aDelay
 	 * @private
 	 */
-	_ssl_loadDataChunk(aContext, aOffset, aOnSuccess, aOnFailure, aDelay) {
-		clearTimeout(this._ssl_loadDataChunkTimeout);
+	#loadDataChunk(aContext, aOffset, aOnSuccess, aOnFailure, aDelay) {
+		clearTimeout(this.#loadDataChunkTimeout);
 
-		this._ssl_loadDataChunkTimeout = setTimeout(
-			this._ssl_handleLoadDataChunkTimeout, aDelay,
+		this.#loadDataChunkTimeout = setTimeout(
+			this.#handleLoadDataChunkTimeout, aDelay,
 			aContext, aOffset, aOnSuccess, aOnFailure,
 		);
 	}
 
 	/**
-	 * Called by _ssl_loadDataChunk().
+	 * Called by #loadDataChunk().
 	 * @param aContext
 	 * @param aOffset
 	 * @param aOnSuccess
 	 * @param aOnFailure
 	 * @private
 	 */
-	_ssl_handleLoadDataChunkTimeout(aContext, aOffset, aOnSuccess, aOnFailure) {
+	#handleLoadDataChunkTimeout = (aContext, aOffset, aOnSuccess, aOnFailure) => {
 		var loadPromise;
 
 		//keep a reference to any failure handler, which will get called if all retries fail
-		this._ssl_loadDataChunkOnFailure = aOnFailure;
+		this.#loadDataChunkOnFailure = aOnFailure;
 
 		//whether we are replacing all existing data or not
 		var replace = aOffset == 0;
 
-		if (this._ssl_hasMoreData || replace) {
+		if (this.#hasMoreData || replace) {
 			//load items via the adapter, storing the promise for use as a 'currently executing' flag
 			new Promise(function (resolve) {
-				loadPromise = this._ssl_adapter.loadItems(aContext, aOffset);
-				this._ssl_loadPromise = loadPromise;
+				loadPromise = this.#adapter.loadItems(aContext, aOffset);
+				this.#loadPromise = loadPromise;
 				resolve(loadPromise);
 
-				if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
-					this._ssl_logger.info("Loading data from offset " + aOffset + ".");
+				if (this.#logLevel >= LOG_LEVEL_NOTICE) {
+					this.#logger.info("Loading data from offset " + aOffset + ".");
 				}
 			}.bind(this))
 				.then(function (r) {
 					//if the the promises don't match, it indicates that the load was aborted.
 					//We just ignore the result here, as it will get handled by abort() itself
-					if (this._ssl_loadPromise === loadPromise) {
+					if (this.#loadPromise === loadPromise) {
 						if (!(r && ('items' in r))) throw new StreamListLoadError(
 							"Invalid load result. Key 'items' must be of type Array.",
 							0, null, r, false,
 						);
 
-						this._ssl_hasMoreData = this._ssl_bindDataChunk(r.items, replace);
+						this.#hasMoreData = this.#bindDataChunk(r.items, replace);
 
-						if (!this._ssl_hasMoreData) {
-							if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
-								this._ssl_logger.info("Reached end of data.");
+						if (!this.#hasMoreData) {
+							if (this.#logLevel >= LOG_LEVEL_NOTICE) {
+								this.#logger.info("Reached end of data.");
 							}
 						}
 
 						if (replace) {
-							this._ssl_loadInfo = aContext;
+							this.#loadInfo = aContext;
 						}
 
-						this._ssl_loadPromise = null;
-						this._ssl_loadRetryIndex = 0;
-						this._ssl_loadDataChunkOnFailure = null;
+						this.#loadPromise = null;
+						this.#loadRetryIndex = 0;
+						this.#loadDataChunkOnFailure = null;
 
 						//sync the view to check if we should show any new items
-						this._ssl_syncView();
+						this.#syncView();
 
 						if (aOnSuccess) {
 							aOnSuccess(r);
@@ -218,17 +311,17 @@ export class StreamList {
 					}
 				}.bind(this))
 				.catch(function (e) {
-					this._ssl_loadPromise = null;
-					this._ssl_loadDataChunkOnFailure = null;
+					this.#loadPromise = null;
+					this.#loadDataChunkOnFailure = null;
 					var msg = "Loading data failed.";
 
 					//if we should retry
-					if (this._ssl_loadRetryIndex < this._ssl_loadRetryCount) {
-						msg += " Retrying in " + this._ssl_loadRetryDelay + "ms.";
-						this._ssl_loadRetryIndex++;
+					if (this.#loadRetryIndex < this.#loadRetryCount) {
+						msg += " Retrying in " + this.#loadRetryDelay + "ms.";
+						this.#loadRetryIndex++;
 
 						//load the data chunk again after a delay
-						this._ssl_loadDataChunk(aContext, aOffset, aOnSuccess, aOnFailure, this._ssl_loadRetryDelay);
+						this.#loadDataChunk(aContext, aOffset, aOnSuccess, aOnFailure, this.#loadRetryDelay);
 					} else {
 						msg += " Will not retry.";
 
@@ -237,14 +330,14 @@ export class StreamList {
 						}
 					}
 
-					if (this._ssl_logLevel >= LOG_LEVEL_ERROR) {
-						this._ssl_logger.error(msg, {
+					if (this.#logLevel >= LOG_LEVEL_ERROR) {
+						this.#logger.error(msg, {
 							exception: e,
 						});
 					}
 				}.bind(this));
 		}
-	}
+	};
 
 	/**
 	 * Adds the loaded items to the store.
@@ -253,7 +346,7 @@ export class StreamList {
 	 * @returns {boolean} Whether any items were added to the store.
 	 * @private
 	 */
-	_ssl_bindDataChunk(aResults, aReplace) {
+	#bindDataChunk(aResults, aReplace) {
 		var replace = aReplace != null ? aReplace : true;
 
 		//holds the keys of all items we encountered during this call
@@ -265,12 +358,12 @@ export class StreamList {
 
 		for (i = 0, len = aResults.length; i < len; i++) {
 			result = aResults[i];
-			itemKey = this._ssl_adapter.getItemKey(result);
+			itemKey = this.#adapter.getItemKey(result);
 
 			//if the item is not already in the current chunk
 			if (!chunkItemsSet.has(itemKey)) {
 				// get any existing matching item in the overall list
-				item = this._ssl_itemsMap.get(itemKey);
+				item = this.#itemsMap.get(itemKey);
 
 				//if we already have the item in the overall list
 				if (item) {
@@ -307,26 +400,26 @@ export class StreamList {
 		}
 
 		if (replace) {
-			this._ssl_itemsMap.clear();
-			this._ssl_itemsList.splice(0);
-			this._ssl_itemsListIndex = 0;
+			this.#itemsMap.clear();
+			this.#itemsList.splice(0);
+			this.#itemsListIndex = 0;
 		}
 
 		for (i = 0, len = chunkItemsList.length; i < len; i++) {
 			item = chunkItemsList[i];
 
-			this._ssl_itemsList.push(item);
-			this._ssl_itemsMap.set(item.key, item);
+			this.#itemsList.push(item);
+			this.#itemsMap.set(item.key, item);
 		}
 
-		if (this._ssl_logLevel >= LOG_LEVEL_NOTICE) {
+		if (this.#logLevel >= LOG_LEVEL_NOTICE) {
 			added = chunkItemsList.length;
 			discarded = chunkItemsSet.size - added;
 
 			msg = "Added " + added + " items.";
 			if (discarded > 0) msg += " Discarded " + discarded + " duplicates.";
 
-			this._ssl_logger.info(msg);
+			this.#logger.info(msg);
 		}
 
 		return chunkItemsList.length > 0;
@@ -337,21 +430,21 @@ export class StreamList {
 	 * @returns {int} The number of items loaded but not yet displayed.
 	 * @private
 	 */
-	_ssl_bindViewChunk() {
+	#bindViewChunk() {
 		var chunk = document.createDocumentFragment();
 		var chunkActualSize = 0;
 		var i, item;
 
 		for (
 			i = 0;
-			i < this._ssl_viewChunkSize && this._ssl_itemsListIndex < this._ssl_itemsList.length;
-			i++, this._ssl_itemsListIndex++
+			i < this.#viewChunkSize && this.#itemsListIndex < this.#itemsList.length;
+			i++, this.#itemsListIndex++
 		) {
-			item = this._ssl_itemsList[this._ssl_itemsListIndex];
+			item = this.#itemsList[this.#itemsListIndex];
 
 			//if the item hasn't been rendered yet (i.e. created the <li> element)
 			if (!item.element) {
-				item.element = this._ssl_adapter.renderItem(item.result, this._ssl_container);
+				item.element = this.#adapter.renderItem(item.result, this.#container);
 			}
 
 			chunk.appendChild(item.element);
@@ -359,44 +452,44 @@ export class StreamList {
 		}
 
 		if (chunkActualSize > 0) {
-			this._ssl_container.appendChild(chunk);
+			this.#container.appendChild(chunk);
 
-			if (this._ssl_eventTarget.hasEventListenerOfType('render-chunk')) {
-				this._ssl_eventTarget.dispatchEvent(this, {
+			if (this.#eventTarget.hasEventListenerOfType('render-chunk')) {
+				this.#eventTarget.dispatchEvent(this, {
 					type: 'render-chunk',
 					target: this,
 				});
 			}
 		}
 
-		return this._ssl_itemsList.length - this._ssl_itemsListIndex;
+		return this.#itemsList.length - this.#itemsListIndex;
 	}
 
 	/**
 	 * Checks if there are more items that need to be displayed.
 	 * This is called from scroll event handlers, etc.
-	 * Calls _ssl_handleSyncViewTimeout().
+	 * Calls #handleSyncViewTimeout().
 	 * @private
 	 */
-	_ssl_syncView() {
-		cancelAnimationFrame(this._ssl_syncViewTimeout);
-		this._ssl_syncViewTimeout = requestAnimationFrame(this._ssl_handleSyncViewTimeout);
+	#syncView() {
+		cancelAnimationFrame(this.#syncViewTimeout);
+		this.#syncViewTimeout = requestAnimationFrame(this.#handleSyncViewTimeout);
 	}
 
 	/**
-	 * Called by _ssl_syncView().
+	 * Called by #syncView().
 	 * @private
 	 */
-	_ssl_handleSyncViewTimeout() {
+	#handleSyncViewTimeout = () => {
 		var itemsLeftCount, doStep, distance, viewportScrollY;
 
-		if (this._ssl_itemsListIndex == 0) {
-			while (this._ssl_container.hasChildNodes()) {
-				this._ssl_container.removeChild(this._ssl_container.lastChild);
+		if (this.#itemsListIndex == 0) {
+			while (this.#container.hasChildNodes()) {
+				this.#container.removeChild(this.#container.lastChild);
 			}
 		}
 
-		if (this._ssl_syncingAll) {
+		if (this.#syncingAll) {
 			doStep = true;
 		} else {
 			viewportScrollY = window.scrollY;
@@ -404,194 +497,53 @@ export class StreamList {
 
 			distance =
 				(viewportScrollY + window.innerHeight)
-				- (domOffsetTop(this._ssl_container) + this._ssl_container.offsetHeight);
+				- (domOffsetTop(this.#container) + this.#container.offsetHeight);
 
-			doStep = distance >= (this._ssl_displayThreshold * -1);
+			doStep = distance >= (this.#displayThreshold * -1);
 		}
 
 		if (doStep) {
-			itemsLeftCount = this._ssl_bindViewChunk();
+			itemsLeftCount = this.#bindViewChunk();
 
 			if (itemsLeftCount > 0) {
-				this._ssl_syncView();
+				this.#syncView();
 			} else {
-				if (!this._ssl_hasMoreData) {
-					window.removeEventListener('scroll', this._ssl_handleUnthrottledReflow);
-					window.removeEventListener('resize', this._ssl_handleUnthrottledReflow);
+				if (!this.#hasMoreData) {
+					window.removeEventListener('scroll', this.#handleUnthrottledReflow);
+					window.removeEventListener('resize', this.#handleUnthrottledReflow);
 				}
 			}
 
-			if (this._ssl_hasMoreData) {
-				if (!this._ssl_loadPromise) {
-					if (itemsLeftCount < this._ssl_preloadThreshold) {
-						this._ssl_loadDataChunk(this._ssl_loadInfo, this._ssl_itemsList.length, null, null, 0);
+			if (this.#hasMoreData) {
+				if (!this.#loadPromise) {
+					if (itemsLeftCount < this.#preloadThreshold) {
+						this.#loadDataChunk(this.#loadInfo, this.#itemsList.length, null, null, 0);
 					}
 				}
 			}
 		}
-	}
+	};
 
 	/**
 	 * Event handler for scroll, resize, etc.
-	 * Calls _ssl_handleReflow().
+	 * Calls #handleReflow().
 	 * @private
 	 */
-	_ssl_handleUnthrottledReflow() {
-		cancelAnimationFrame(this._ssl_handleUnthrottledReflowTimeout);
-		this._ssl_handleUnthrottledReflowTimeout = requestAnimationFrame(this._ssl_handleReflow);
-	}
+	#handleUnthrottledReflow = () => {
+		cancelAnimationFrame(this.#handleUnthrottledReflowTimeout);
+		this.#handleUnthrottledReflowTimeout = requestAnimationFrame(this.#handleReflow);
+	};
 
 	/**
-	 * Called by _ssl_handleUnthrottledReflow().
+	 * Called by #handleUnthrottledReflow().
 	 * @private
 	 */
-	_ssl_handleReflow() {
-		this._ssl_syncView();
-	}
+	#handleReflow = () => {
+		this.#syncView();
+	};
+
+	#handleUnthrottledReflowTimeout;
 }
-
-/**
- * @membersOf StreamList
- */
-Object.defineProperties(StreamList.prototype, {
-	/**
-	 * @memberOf StreamList
-	 * @public
-	 */
-	preloadThreshold: {
-		get: function () {
-			return this._ssl_preloadThreshold;
-		},
-
-		set: function (v) {
-			var vv = parseInt(v);
-
-			if (!(!isNaN(vv) && v >= 0)) throw new Error(
-				"Invalid preloadThreshold '" + v + "'.",
-			);
-
-			this._ssl_preloadThreshold = vv;
-		},
-	},
-
-	/**
-	 * @memberOf StreamList
-	 * @public
-	 */
-	loadRetryCount: {
-		get: function () {
-			return this._ssl_loadRetryCount;
-		},
-
-		set: function (v) {
-			var vv = parseInt(v);
-
-			if (!(!isNaN(vv) && v >= 0)) throw new Error(
-				"Invalid loadRetryCount '" + v + "'.",
-			);
-
-			this._ssl_loadRetryCount = vv;
-		},
-	},
-
-	/**
-	 * @memberOf StreamList
-	 * @public
-	 */
-	loadRetryDelay: {
-		get: function () {
-			return this._ssl_loadRetryDelay;
-		},
-
-		set: function (v) {
-			var vv = parseInt(v);
-
-			if (!(!isNaN(vv) && v >= 0)) throw new Error(
-				"Invalid loadRetryDelay '" + v + "'.",
-			);
-
-			this._ssl_loadRetryDelay = vv;
-		},
-	},
-
-	/**
-	 * @memberOf StreamList
-	 * @public
-	 */
-	displayThreshold: {
-		get: function () {
-			return this._ssl_displayThreshold;
-		},
-
-		set: function (v) {
-			var vv = parseInt(v);
-
-			if (!(!isNaN(vv) && v >= 0)) throw new Error(
-				"Invalid displayThreshold '" + v + "'.",
-			);
-
-			this._ssl_displayThreshold = vv;
-		},
-	},
-
-	/**
-	 * @memberOf StreamList
-	 * @public
-	 */
-	viewChunkSize: {
-		get: function () {
-			return this._ssl_viewChunkSize;
-		},
-
-		set: function (v) {
-			var vv = parseInt(v);
-
-			if (!(!isNaN(vv) && v > 0)) throw new Error(
-				"Invalid viewChunkSize '" + v + "'.",
-			);
-
-			this._ssl_viewChunkSize = vv;
-		},
-	},
-
-	/**
-	 * @memberOf StreamList
-	 * @public
-	 */
-	logLevel: {
-		get: function () {
-			return this._ssl_logLevel;
-		},
-
-		set: function (v) {
-			var vv = parseInt(v);
-
-			if (!(!isNaN(vv) && v >= 0)) throw new Error(
-				"Invalid logLevel '" + v + "'.",
-			);
-
-			this._ssl_logLevel = vv;
-		},
-	},
-
-	/**
-	 * @memberOf StreamList
-	 * @public
-	 */
-	logger: {
-		get: function () {
-			return this._ssl_logger;
-		},
-
-		set: function (v) {
-			if (!(v && ('info' in v) && ('error' in v) && ('warn' in v) && ('debug' in v))) throw new Error(
-				"Logger object must implement methods error(), warn(), info(), debug().",
-			);
-
-			this._ssl_logger = v;
-		},
-	},
-});
 
 function domOffsetTop(aElement) {
 	var offset = 0;
