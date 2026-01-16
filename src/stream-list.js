@@ -1,9 +1,9 @@
-import { StreamListAdapter } from '@solarfield/stream-list/src/Solarfield/StreamList/StreamListAdapter.js';
-import { StreamListLoadError } from '@solarfield/stream-list/src/Solarfield/StreamList/StreamListLoadError.js';
+import { StreamListAdapter } from './adapter.js';
+import { StreamListLoadError } from './error.js';
 import { EventTarget } from "@mikecaines/event-target/src/event-target.js";
 
-export { StreamListAdapter } from "./StreamListAdapter.js";
-export { StreamListLoadError } from "./StreamListLoadError.js";
+export { StreamListAdapter } from "./adapter.js";
+export { StreamListLoadError } from "./error.js";
 
 const LOG_LEVEL_ERROR = 3;
 const LOG_LEVEL_NOTICE = 5;
