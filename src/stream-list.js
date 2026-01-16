@@ -32,6 +32,56 @@ export class StreamList {
 		);
 		this.#container = aOptions.container;
 
+		this.#shouldDoStep = (() => {
+			// determine if we have a scroll ancestor
+			// (i.e. ancestor to the container element with overflow:auto|scroll on it)
+			let scrollAncestor;
+			{
+				let el = this.#container.parentElement;
+				while (el) {
+					const overflow = getComputedStyle(el).overflowY;
+					if (overflow === 'auto' || overflow === 'scroll') {
+						scrollAncestor = el;
+						break;
+					}
+
+					el = el.parentElement;
+				}
+			}
+
+			if (scrollAncestor) {
+				this.#scroller = scrollAncestor;
+
+				return () => {
+					const distance =
+						(scrollAncestor.scrollTop + scrollAncestor.offsetHeight)
+						- (domOffsetTop(this.#container, scrollAncestor) + this.#container.offsetHeight);
+
+					const doStep = distance >= (this.#displayThreshold * -1);
+
+					return doStep;
+				};
+			}
+
+			// fallback to viewport
+			{
+				this.#scroller = window;
+
+				return () => {
+					let viewportScrollY = window.scrollY;
+					if (viewportScrollY == undefined) viewportScrollY = document.documentElement.scrollTop; //ie11
+
+					const distance =
+						(viewportScrollY + window.innerHeight)
+						- (domOffsetTop(this.#container) + this.#container.offsetHeight);
+
+					const doStep = distance >= (this.#displayThreshold * -1);
+
+					return doStep;
+				};
+			}
+		})();
+
 		if (!(aOptions.adapter instanceof StreamListAdapter)) throw new Error(
 			"The adapter option must be of type StreamListAdapter.",
 		);
@@ -160,8 +210,8 @@ export class StreamList {
 			this.#hasMoreData = true;
 			this.#syncingAll = false;
 			this.#loadRetryIndex = 0;
-			window.addEventListener('scroll', this.#handleUnthrottledReflow);
-			window.addEventListener('resize', this.#handleUnthrottledReflow);
+			this.#scroller.addEventListener('scroll', this.#handleUnthrottledReflow);
+			this.#scroller.addEventListener('resize', this.#handleUnthrottledReflow);
 			this.#loadDataChunk(aContext, 0, resolve, reject, 0);
 		}.bind(this));
 	}
@@ -229,6 +279,8 @@ export class StreamList {
 	/** @type {int} */ #displayThreshold;
 	/** @type {*} */ #logger = null;
 	/** @type {int} */ #logLevel;
+	/** @type {function} */ #shouldDoStep;
+	/** @type {HTMLElement|window} */ #scroller;
 
 	/**
 	 * Loads a chunk of item results via the adapter, starting from aOffset.
@@ -492,14 +544,7 @@ export class StreamList {
 		if (this.#syncingAll) {
 			doStep = true;
 		} else {
-			viewportScrollY = window.scrollY;
-			if (viewportScrollY == undefined) viewportScrollY = document.documentElement.scrollTop; //ie11
-
-			distance =
-				(viewportScrollY + window.innerHeight)
-				- (domOffsetTop(this.#container) + this.#container.offsetHeight);
-
-			doStep = distance >= (this.#displayThreshold * -1);
+			doStep = this.#shouldDoStep();
 		}
 
 		if (doStep) {
@@ -509,8 +554,8 @@ export class StreamList {
 				this.#syncView();
 			} else {
 				if (!this.#hasMoreData) {
-					window.removeEventListener('scroll', this.#handleUnthrottledReflow);
-					window.removeEventListener('resize', this.#handleUnthrottledReflow);
+					this.#scroller.removeEventListener('scroll', this.#handleUnthrottledReflow);
+					this.#scroller.removeEventListener('resize', this.#handleUnthrottledReflow);
 				}
 			}
 
@@ -545,11 +590,12 @@ export class StreamList {
 	#handleUnthrottledReflowTimeout;
 }
 
-function domOffsetTop(aElement) {
+function domOffsetTop(aElement, aAncestorElement) {
 	var offset = 0;
 	var el = aElement;
 
 	do {
+		if (!el.contains(aAncestorElement)) break;
 		offset += el.offsetTop;
 	}
 	while ((el = el.offsetParent));
