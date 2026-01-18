@@ -26,9 +26,10 @@ export class StreamListAdapter {
 	 * Creates an HTML element for the item.
 	 * @param {*} item - The item.
 	 * @param {HTMLElement} container - The container element.
+	 * @param {int} index - Index of the item being rendered.
 	 * @return {HTMLElement} The rendered item to be added to the container.
 	 */
-	renderItem(item, container) {
+	renderItem(item, container, index) {
 		throw new Error("Method is abstract.");
 	}
 

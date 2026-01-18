@@ -496,7 +496,7 @@ export class StreamList {
 
 			//if the item hasn't been rendered yet (i.e. created the <li> element)
 			if (!item.element) {
-				item.element = this.#adapter.renderItem(item.result, this.#container);
+				item.element = this.#adapter.renderItem(item.result, this.#container, this.#itemsListIndex);
 			}
 
 			chunk.appendChild(item.element);
