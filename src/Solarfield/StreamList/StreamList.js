@@ -349,6 +349,7 @@ define(
 			 */
 			_ssl_bindViewChunk: function () {
 				var chunk = document.createDocumentFragment();
+				const renderedItems = [];
 				var chunkActualSize = 0;
 				var i, item;
 
@@ -362,6 +363,7 @@ define(
 					//if the item hasn't been rendered yet (i.e. created the <li> element)
 					if (!item.element) {
 						item.element = this._ssl_adapter.renderItem(item.result, this._ssl_container);
+						renderedItems.push(item);
 					}
 
 					chunk.appendChild(item.element);
@@ -370,7 +372,19 @@ define(
 
 				if (chunkActualSize > 0) {
 					this._ssl_container.appendChild(chunk);
-
+					
+					// dispatch an item-initial-render event for each item
+					// This only fires the first time that the item is rendered
+					if (this._ssl_eventTarget.hasEventListeners('item-initial-render')) {
+						for (const item of renderedItems) {
+							this._ssl_eventTarget.dispatchEvent(this, {
+								type: 'item-initial-render',
+								target: this,
+								item,
+							});
+						}
+					}
+					
 					if (this._ssl_eventTarget.hasEventListeners('render-chunk')) {
 						this._ssl_eventTarget.dispatchEvent(this, {
 							type: 'render-chunk',
