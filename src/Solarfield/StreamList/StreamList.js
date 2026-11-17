@@ -445,6 +445,11 @@ define(
 						if (!this._ssl_hasMoreData) {
 							window.removeEventListener('scroll', this._ssl_handleUnthrottledReflow);
 							window.removeEventListener('resize', this._ssl_handleUnthrottledReflow);
+							
+							this._ssl_eventTarget.dispatchEvent(this, {
+								type: 'end-of-data',
+								target: this,
+							});
 						}
 					}
 
